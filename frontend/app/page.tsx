@@ -8,6 +8,7 @@ export default function Home() {
 
       <Button>I am a reusable component!</Button>
       <Counter />
+      <Button>I love Caitlin B</Button>
     </div>
   );
 }

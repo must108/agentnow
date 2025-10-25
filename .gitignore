@@ -5,6 +5,8 @@ user_text.txt
 accel_text.txt
 user_vectors.npy
 accel_vectors.npy
+vectors.npy
+text.txt
 
 vectors.npy
 __pycache__

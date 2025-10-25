@@ -24,14 +24,14 @@ except UnicodeDecodeError:
 texts = []
 cols = ['name', 'description']
 
-def convert(row):
+def convert(row, cols):
     parts = []
     for c in cols:
         if pd.notna(row[c]) and str(row[c].strip()):
             parts.append(str(row[c]).strip())
     return " | ".join(parts)
 
-texts = [convert(row) for _, row in df.iterrows()]
+texts = [convert(row, cols) for _, row in df.iterrows()]
 
 DOMAIN_TOKENS = {}
 

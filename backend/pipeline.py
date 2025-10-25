@@ -1,6 +1,4 @@
 from google import genai
-from google.genai import types
-from google.genai.errors import ClientError
 import os
 import numpy as np
 import pandas as pd
@@ -8,10 +6,15 @@ from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
 import re
 
+from embed import fully_embed, normalize, save_cache, load_cache
+
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 client = genai.Client()
+
 TOP_K = 3
+VEC_PATH = "data/vectors.npy"
+TXT_PATH = "data/texts.txt"
 
 try:
     df = pd.read_csv("data/accelerators.csv", encoding="utf-8")
@@ -38,46 +41,43 @@ with open("data/tokens.txt", "r") as fp:
 
 tokenize = lambda s: set(re.findall(r"[a-z0-9]+", s.lower()))
 
-try:
-    resp = client.models.embed_content(
-        model="gemini-embedding-001",
-        contents=texts,
-        config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
-    )
-    embeddings_matrix = np.array([np.array(e.values) for e in resp.embeddings])
-except ClientError:
-    print("Reached maximum Gemini quota! (wait a bit)")
-    exit()
-except Exception:
-    print("Error! (probably reached quota...)")
-    exit()
+embeddings_matrix, cache = load_cache(VEC_PATH, TXT_PATH)
+
+if embeddings_matrix is None or cache != texts:
+    vec = fully_embed(client, texts, "RETRIEVAL_DOCUMENT", True)
+    vec = normalize(vec)
+
+    save_cache(VEC_PATH, TXT_PATH, vec, texts) 
+    embeddings_matrix, _ = load_cache(VEC_PATH, TXT_PATH)
 
 while True:
     inp = input("Ask a question: ")
     if not inp: break
 
     if not (tokenize(inp) & DOMAIN_TOKENS):
-        print("We dont seem to have an accelerator for this use case yet!")
+        print("\nWe dont seem to have an accelerator for this use case yet!")
         continue
-    
-    resp = client.models.embed_content(
-        model="gemini-embedding-001",
-        contents=[inp],
-        config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY")
-    )
 
-    inp_embedding = np.array(resp.embeddings[0].values).reshape(1, -1)
-    similarities = cosine_similarity(inp_embedding, embeddings_matrix)[0]
+    q_vec = fully_embed(client, [inp], "RETRIEVAL_QUERY", True)
+    q_vec = normalize(q_vec)
+
+    if q_vec.shape[1] != embeddings_matrix.shape[1]:
+        vec = fully_embed(client, texts, "RETRIEVAL_DOCUMENT", True)
+        vec = normalize(vec)
+        save_cache(VEC_PATH, TXT_PATH, vec, texts)
+        embeddings_matrix, _ = load_cache(VEC_PATH, TXT_PATH)
+
+    similarities = (q_vec @ embeddings_matrix.T)[0]
     idxs = np.argsort(-similarities)[:TOP_K]
 
     best_idx = int(idxs[0])
     best_score = float(similarities[best_idx])
 
     if best_score < 0.15:
-        print("We dont seem to have an accelerator for this use case yet!")
+        print("\nWe dont seem to have an accelerator for this use case yet!")
         exit()
 
-    print("The best accelerators for you are:")
+    print("\nThe best accelerators for you are:")
     for i in idxs:
         if len(texts[i]) > 120:
             print(f"{texts[i][:120]}...")

@@ -7,7 +7,6 @@ import Blurb from "@/_components/FrontBlurb";
 export default function Home() {
   return (
     <div className="flex flex-col gap-2 p-5">
-      <NavBar />
       <Blurb />
       <div className="space-x-4">
         <Button>I am a reusable component!</Button>

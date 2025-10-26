@@ -181,5 +181,8 @@ def query(payload, mode):
     )
 
     response = model.generate_content(model_input)
+    text = response.text
+    text = text.replace("|", "")
+    text = text.replace("\n", " ")
 
-    return response.text
+    return text

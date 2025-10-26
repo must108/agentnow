@@ -26,7 +26,11 @@ export default function NavBar() {
               <GoSearch />
             </Button>
           </Link>
-          <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-3 py-1 text-xs text-white bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition">
+          <span
+            className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-3 py-1 text-xs text-white bg-gray-700 rounded 
+                      opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
+                      transition-all duration-300 ease-out"
+          >
             Text Chat
           </span>
         </div>
@@ -38,7 +42,11 @@ export default function NavBar() {
               <HiOutlineMicrophone />
             </Button>
           </Link>
-          <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-3 py-1 text-xs text-white bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition">
+          <span
+            className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-3 py-1 text-xs text-white bg-gray-700 rounded 
+                      opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
+                      transition-all duration-300 ease-out"
+          >
             Voice Chat
           </span>
         </div>

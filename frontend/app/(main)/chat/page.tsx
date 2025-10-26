@@ -2,9 +2,8 @@
 
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 
-
 import { useEffect, useRef, useState } from "react";
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown from "react-markdown";
 type Msg = { role: "user" | "assistant" | "system"; text: string };
 
 export default function Chatbot() {
@@ -46,7 +45,9 @@ export default function Chatbot() {
           typeof data === "string"
             ? data
             : data?.model?.json?.recommendation
-            ? `${data.model.json.recommendation}\n\n${data.model.json.rationale ?? ""}`
+            ? `${data.model.json.recommendation}\n\n${
+                data.model.json.rationale ?? ""
+              }`
             : data?.message || JSON.stringify(data, null, 2);
       } else {
         reply = await res.text();
@@ -71,9 +72,9 @@ export default function Chatbot() {
   }
 
   return (
-    <div className="flex h-dvh w-full items-center justify-center bg-neutral-950 p-4">
-      <div className="flex h-full w-full max-w-2xl flex-col rounded-2xl bg-neutral-900/60 p-4 shadow-lg ring-1 ring-white/10">
-        <div className="flex-1 space-y-3 overflow-y-auto pr-2">
+    <div className="flex w-full items-center justify-center bg-[#073561] p-4">
+      <div className="flex w-full max-w-2xl flex-col rounded-2xl bg-[#e8ecee] p-4 shadow-lg ring-1 ring-white/10 h-[calc(100vh-120px)]">
+        <div className="flex-1 space-y-3 pr-2 overflow-y-auto">
           {messages.map((m, i) => (
             <div
               key={i}
@@ -81,8 +82,8 @@ export default function Chatbot() {
                 m.role === "user"
                   ? "ml-auto bg-blue-600 text-white shadow"
                   : m.role === "assistant"
-                  ? "mr-auto bg-neutral-800 text-neutral-100"
-                  : "mx-auto bg-neutral-800/60 text-neutral-300"
+                  ? "mr-auto bg-[#63df4e] text-black"
+                  : "mx-auto bg-neutral-300 text-neutral-700"
               }`}
             >
               <ReactMarkdown>{m.text}</ReactMarkdown>
@@ -90,7 +91,7 @@ export default function Chatbot() {
           ))}
 
           {loading && (
-            <div className="mr-auto max-w-[70%] rounded-2xl bg-neutral-800 px-4 py-2 text-sm text-neutral-300">
+            <div className="mr-auto max-w-[70%] rounded-2xl bg-[#63df4e]/70 px-4 py-2 text-sm text-black">
               Thinking…
             </div>
           )}
@@ -105,7 +106,7 @@ export default function Chatbot() {
 
         <form onSubmit={onSubmit} className="mt-3 flex gap-2">
           <input
-            className="flex-1 rounded-xl bg-neutral-800 px-4 py-3 text-sm text-white outline-none ring-1 ring-white/10 placeholder:text-neutral-400 focus:ring-2 focus:ring-blue-500"
+            className="flex-1 rounded-xl bg-white px-4 py-3 text-sm text-black outline-none ring-1 ring-gray-400 placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500"
             placeholder="Type your message…"
             value={input}
             onChange={(e) => setInput(e.target.value)}

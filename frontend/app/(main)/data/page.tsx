@@ -5,9 +5,8 @@ import React, { useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { BsClipboardDataFill } from "react-icons/bs";
-import { Info, Gauge, BarChart as BarChartIcon, Activity } from "lucide-react";
+import { BarChart as BarChartIcon, Activity } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -144,11 +143,13 @@ export default function AcceleratorDashboard() {
 
   return (
     <div className="min-h-screen bg-[#073561] text-white mx-auto max-w-7xl space-y-6 p-4 md:p-8">
-    <div className="flex items-center gap-3">
-      <BsClipboardDataFill />
-      <h1 className="text-lg font-semibold">Accelerator Data</h1>
-    </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="flex items-center gap-3">
+        <BsClipboardDataFill />
+        <h1 className="text-lg font-semibold">Accelerator Data</h1>
+      </div>
+
+      {/* Top Stat Cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard
           icon={<BarChartIcon className="h-4 w-4 text-[#63df4e]" />}
           title="Accelerators"
@@ -159,19 +160,45 @@ export default function AcceleratorDashboard() {
           title="User Requests"
           value={fmtNum(data.summary.user_request_count)}
         />
-        <StatCard
-          icon={<Gauge className="h-4 w-4 text-[#63df4e]" />}
-          title="Coverage"
-          value={fmtPct(data.coverage.coverage_rate)}
-          extra={`${fmtNum(data.coverage.covered_requests)} / ${fmtNum(
-            data.summary.user_request_count
-          )}`}
-        />
-        <StatCard
-          icon={<Info className="h-4 w-4 text-[#63df4e]" />}
-          title="Embedding Dim"
-          value={fmtNum(data.summary.embedding_dim)}
-        />
+        {/* Token Insights card */}
+        <Card className="bg-black/25 text-white border border-white/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Token Insights</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="gaps">
+              <TabsList className="w-full flex flex-wrap justify-start gap-2 bg-[#0b4072] text-white rounded-md p-1">
+                <TabsTrigger
+                  value="gaps"
+                  className="flex-1 min-w-[100px] text-white data-[state=active]:bg-transparent data-[state=active]:text-[#63df4e] data-[state=active]:border-b-2 data-[state=active]:border-[#63df4e] transition-colors"
+                >
+                  Top Gap Tokens
+                </TabsTrigger>
+                <TabsTrigger
+                  value="reqOnly"
+                  className="flex-1 min-w-[100px] text-white data-[state=active]:bg-transparent data-[state=active]:text-[#63df4e] data-[state=active]:border-b-2 data-[state=active]:border-[#63df4e] transition-colors"
+                >
+                  Req Tokens
+                </TabsTrigger>
+                <TabsTrigger
+                  value="accelOnly"
+                  className="flex-1 min-w-[100px] text-white data-[state=active]:bg-transparent data-[state=active]:text-[#63df4e] data-[state=active]:border-b-2 data-[state=active]:border-[#63df4e] transition-colors"
+                >
+                  Accel Tokens
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="gaps" className="mt-4">
+                <TokenList items={data.token_stats.top_gap_topics} />
+              </TabsContent>
+              <TabsContent value="reqOnly" className="mt-4">
+                <TokenList items={data.token_stats.sample_req_only_tokens} />
+              </TabsContent>
+              <TabsContent value="accelOnly" className="mt-4">
+                <TokenList items={data.token_stats.sample_accel_only_tokens} />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Leaderboards */}
@@ -218,14 +245,17 @@ export default function AcceleratorDashboard() {
               strokeDasharray="4 4"
             />
             <Bar dataKey="pct" name="Mean Similarity (%)" fill="#63df4e">
-                <LabelList
+              <LabelList
                 dataKey="pct"
                 position="right"
                 formatter={(value: any) => {
-                    const num = typeof value === "object" ? value?.pct ?? value?.value ?? 0 : value;
-                    return `${Number(num).toFixed(1)}%`;
+                  const num =
+                    typeof value === "object"
+                      ? value?.pct ?? value?.value ?? 0
+                      : value;
+                  return `${Number(num).toFixed(1)}%`;
                 }}
-                />
+              />
             </Bar>
           </BarChart>
         </ChartCard>
@@ -241,7 +271,10 @@ export default function AcceleratorDashboard() {
         <CardContent>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={simSeries} margin={{ left: 16, right: 16, top: 8, bottom: 8 }}>
+              <LineChart
+                data={simSeries}
+                margin={{ left: 16, right: 16, top: 8, bottom: 8 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
                 <XAxis dataKey="name" stroke="#fff" />
                 <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} stroke="#fff" />
@@ -262,7 +295,10 @@ export default function AcceleratorDashboard() {
             </ResponsiveContainer>
 
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={overlapSeries} margin={{ left: 16, right: 16, top: 20, bottom: 8 }}>
+              <BarChart
+                data={overlapSeries}
+                margin={{ left: 16, right: 16, top: 20, bottom: 8 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
                 <XAxis dataKey="name" stroke="#fff" />
                 <YAxis allowDecimals={false} stroke="#fff" />
@@ -273,43 +309,8 @@ export default function AcceleratorDashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-
-          <Separator className="my-6 bg-white/20" />
-
-            <Tabs defaultValue="gaps">
-            <TabsList className="bg-[#0b4072] text-white">
-                <TabsTrigger
-                value="gaps"
-                className="text-white data-[state=active]:text-[#63df4e] data-[state=active]:border-b-2 data-[state=active]:border-[#63df4e] transition-colors"
-                >
-                Top Gap Topics
-                </TabsTrigger>
-                <TabsTrigger
-                value="reqOnly"
-                className="text-white data-[state=active]:text-[#63df4e] data-[state=active]:border-b-2 data-[state=active]:border-[#63df4e] transition-colors"
-                >
-                Req-Only Tokens
-                </TabsTrigger>
-                <TabsTrigger
-                value="accelOnly"
-                className="text-white data-[state=active]:text-[#63df4e] data-[state=active]:border-b-2 data-[state=active]:border-[#63df4e] transition-colors"
-                >
-                Accel-Only Tokens
-                </TabsTrigger>
-            </TabsList>
-            <TabsContent value="gaps" className="mt-4">
-                <TokenList items={data.token_stats.top_gap_topics} />
-            </TabsContent>
-            <TabsContent value="reqOnly" className="mt-4">
-                <TokenList items={data.token_stats.sample_req_only_tokens} />
-            </TabsContent>
-            <TabsContent value="accelOnly" className="mt-4">
-                <TokenList items={data.token_stats.sample_accel_only_tokens} />
-            </TabsContent>
-            </Tabs>
         </CardContent>
       </Card>
-
     </div>
   );
 }

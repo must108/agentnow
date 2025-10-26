@@ -67,7 +67,7 @@ export default function Chatbot() {
       setApiError(msg);
       setMessages((m) => [
         ...m,
-        { role: "assistant", text: "Sorry—something went wrong." },
+        { role: "assistant", text: "Sorry, something went wrong." },
       ]);
     } finally {
       setLoading(false);

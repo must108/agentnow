@@ -12,9 +12,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, JSONResponse
 from pydantic import BaseModel
 from collections import Counter
-from faster_whisper import WhisperModel
-from sound_helper import decode_webm_to_pcm16
-import tempfile, shutil, os, httpx
 
 from embed import fully_embed, normalize, save_cache, load_cache, convert
 
@@ -24,7 +21,6 @@ client = genai_client.Client(api_key=api_key)
 genai.configure(api_key=api_key)
 
 STT_MODEL_NAME = "base"
-stt = WhisperModel(STT_MODEL_NAME, compute_type="int8", device="cpu")
 
 ROLLING_TEXT = []
 LAST_SUGGESTION = None
@@ -364,57 +360,3 @@ def report(k: int = 10, threshold: float = 0.15):
     }
 
     return JSONResponse(report)
-
-@app.post("/transcribe_chunk")
-async def transcribe_chunk(file: UploadFile = File(...)):
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
-        shutil.copyfileobj(file.file, tmp)
-        path = tmp.name
-
-    try:
-        try:
-            segs, info = stt.transcribe(path, vad_filter=True, language="en", beam_size=1)
-            partial = "".join(s.text for s in segs).strip()
-        except Exception as av_err:
-            audio = decode_webm_to_pcm16(path, target_sr=16000)
-            segs, info = stt.transcribe(audio=audio, vad_filter=True, language="en", beam_size=1, sampling_rate=16000)
-            partial = "".join(s.text for s in segs).strip()
-
-        if not partial:
-            return JSONResponse({"ok": True, "partial": ""})
-
-        ROLLING_TEXT.append(partial)
-        final_text = " ".join(ROLLING_TEXT).strip()
-        is_final = partial.endswith((".", "!", "?")) or len(final_text) > 40
-
-        if not is_final:
-            return JSONResponse({"ok": True, "partial": partial})
-
-        ROLLING_TEXT.clear()
-        async with httpx.AsyncClient(timeout=15.0) as client_http:
-            r = await client_http.get(
-                "http://127.0.0.1:8000/query",
-                params={"payload": final_text, "mode": "voice"},
-            )
-            if r.headers.get("content-type","").startswith("application/json"):
-                suggestion = r.json()
-            else:
-                suggestion = {"text": r.text, "title": "", "use_case": "unknown"}
-
-        global LAST_SUGGESTION
-        LAST_SUGGESTION = {"utterance": final_text, "suggestion": suggestion}
-
-        return JSONResponse({
-            "ok": True,
-            "finalized": True,
-            "utterance": final_text,
-            "suggestion": suggestion
-        })
-
-    finally:
-        try: os.remove(path)
-        except: pass
-
-@app.get("/live_state")
-def live_state():
-    return JSONResponse(LAST_SUGGESTION or {})

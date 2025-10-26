@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { BsClipboardDataFill } from "react-icons/bs";
 import { Info, Gauge, BarChart as BarChartIcon, Activity } from "lucide-react";
 import {
   BarChart,
@@ -144,7 +145,7 @@ export default function AcceleratorDashboard() {
   return (
     <div className="min-h-screen bg-[#073561] text-white mx-auto max-w-7xl space-y-6 p-4 md:p-8">
     <div className="flex items-center gap-3">
-      <div className="h-8 w-8 rounded-lg bg-[#63df4e]" />
+      <BsClipboardDataFill />
       <h1 className="text-lg font-semibold">Accelerator Data</h1>
     </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">

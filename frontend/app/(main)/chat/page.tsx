@@ -15,7 +15,7 @@ type ModelProps = {
 
 export default function Chatbot() {
   const [messages, setMessages] = useState<Msg[]>([
-    { role: "system", text: "Hi! Ask me about Technical Accelerators." },
+    { role: "system", text: "Hi! Ask me about Technical Accelerators!" },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -80,8 +80,12 @@ export default function Chatbot() {
   }
 
   return (
-    <div className="flex w-full items-center justify-center bg-[#073561] p-4">
-      <div className="flex w-full max-w-2xl flex-col rounded-2xl bg-[#e8ecee] p-4 shadow-lg ring-1 ring-white/10 h-[calc(100vh-120px)]">
+    <div className="flex flex-col w-full items-center justify-center bg-[#073561] p-4">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="h-8 w-8 rounded-lg bg-[#63df4e]" />
+        <h1 className="text-lg font-semibold">Text with an AI Agent</h1>
+      </div>
+      <div className="flex w-full max-w-2xl flex-col rounded-2xl bg-[#e8ecee] p-4 shadow-lg ring-1 ring-white/10 h-[calc(100vh-160px)]">
         <div className="flex-1 space-y-3 pr-2 overflow-y-auto">
           {messages.map((m, i) => (
             <div

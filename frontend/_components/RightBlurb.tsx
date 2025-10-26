@@ -11,7 +11,6 @@ export default function RightBlurb() {
 
       <div className="flex flex-row space-x-6">
 
-        {/* text chat */}
         <Link
           href="/chat"
           className="block text-[#e8ecee] hover:text-gray-300 transition-colors text-center"
@@ -22,7 +21,6 @@ export default function RightBlurb() {
           </p>
         </Link>
 
-        {/* voice chat */}
         <Link
           href="/voice"
           className="block text-[#e8ecee] hover:text-gray-300 transition-colors text-center"

@@ -5,6 +5,10 @@ import pandas as pd
 from dotenv import load_dotenv
 import re
 
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
 from embed import fully_embed, normalize, save_cache, load_cache, convert
 
 load_dotenv()
@@ -65,24 +69,48 @@ if req_embed is None or req_cache != reqs_texts:
     save_cache(REQ_VEC_PATH, REQ_TXT_PATH, vec, reqs_texts)
     req_embed, _ = load_cache(REQ_VEC_PATH, REQ_TXT_PATH)
 
-while True:
-    inp = input("Ask a question: ")
-    if not inp: break
 
-    if not (tokenize(inp) & (ACCEL_TOKENS | REQ_TOKENS)):
-        print("\nInput may be less precise.")
+app = FastAPI(title="Search")
 
-    q_vec = fully_embed(client, [inp], "RETRIEVAL_QUERY", True)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/hello")
+def hello():
+    return {
+        "message": "hello, world!"
+    }
+
+@app.get("/query")
+def query(payload):
+    global accel_embed, req_embed
+    q = payload.strip()
+
+    if not q:
+        raise HTTPException(400, "Empty query")
+    
+    results = { 
+        "message": None,
+        "accelerators": [],
+        "user_requests": []
+    }
+
+    q_vec = fully_embed(client, [q], "RETRIEVAL_QUERY", True)
     q_vec = normalize(q_vec)
 
     if q_vec.ndim == 1:
         q_vec = q_vec[None, :]
 
     if q_vec.shape[1] != accel_embed.shape[1]:
-        vec = fully_embed(client, accel_texts, "RETRIEVAL_DOCUMENT", True)
-        vec = normalize(vec)
-        save_cache(ACCEL_VEC_PATH, ACCEL_TXT_PATH, vec, accel_texts)
-        accel_embed, _ = load_cache(ACCEL_VEC_PATH, ACCEL_TXT_PATH)
+         vec = fully_embed(client, accel_texts, "RETRIEVAL_DOCUMENT", True)
+         vec = normalize(vec)
+         save_cache(ACCEL_VEC_PATH, ACCEL_TXT_PATH, vec, accel_texts)
+         accel_embed, _ = load_cache(ACCEL_VEC_PATH, ACCEL_TXT_PATH)
 
     if q_vec.shape[1] != req_embed.shape[1]:
         vec = fully_embed(client, reqs_texts, "RETRIEVAL_DOCUMENT", True)
@@ -101,25 +129,40 @@ while True:
 
     accel_best_score = float(accel_similarities[accel_best_idx])
     req_best_score = float(req_similarities[req_best_idx])
-
+    
     if accel_best_score < 0.15:
-        print("We don't seem to have an accelerator related to this query yet!")
-
-    print("\nThe best accelerators for your query are: ")
-    for i in accel_idxs:
-        if len(accel_texts[i]) > 120:
-            print(f"{accel_texts[i][:120]}...")
-        else:
-            print(f"{accel_texts[i]}")
+        results["message"] = "We don't seem to have an accelerator related to this query yet!"
+    else:
+        results["accelerators"] = [
+            {
+                "text": accel_texts[i]
+            }
+            for i in accel_idxs
+        ]
 
     if req_best_score < 0.15:
-        print("We don't seem to have an user request related to this query yet!")
-        continue
+        results["message"] = "We don't seem to have an user request related to this query yet!"
+    else:
+        results["user_requests"] = [
+            {
+                "text": reqs_texts[i]
+            }
+            for i in req_idxs
+        ]
 
-    print("\nAlso, these user requests are very similar to your query: ")
-    for i in req_idxs:
-        if len(reqs_texts[i]) > 120:
-            print(f"{reqs_texts[i][:120]}...")
-        else:
-            print(f"{reqs_texts[i]}")
+    return results
 
+'''
+<button id="ptt">🎙️ Hold to talk</button>
+<script>
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const r = new SR(); r.lang="en-US"; r.interimResults=true; r.continuous=false;
+  let finalText = "";
+  r.onresult = e => finalText = [...e.results].map(x=>x[0].transcript).join("");
+  r.onend = () => window.postMessage({ type:"VOICE_TEXT", text: finalText });
+  const btn = document.getElementById("ptt");
+  btn.onmousedown = ()=>r.start();
+  btn.onmouseup   = ()=>r.stop();
+</script>
+
+'''

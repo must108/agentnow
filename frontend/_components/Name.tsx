@@ -12,7 +12,7 @@ import SNIcon from "@/imgs/SN.png";
 export default function Title() {
   return (
     <h1 className="text-5xl font-bold text-[#63df4e] flex items-center">
-        <span>acceln</span>
+        <span>agentn</span>
         <Image
             src={SNIcon}
             alt="O icon"

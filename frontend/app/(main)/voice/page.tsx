@@ -165,7 +165,7 @@ export default function Voice() {
         stop();
       }}
       onContextMenu={(e) => e.preventDefault()}
-      className="flex items-center justify-center w-20 h-20 rounded-full bg-blue-500 text-white text-3xl shadow-md hover:bg-blue-600 active:scale-95 transition"
+      className="flex items-center justify-center w-20 h-20 rounded-full bg-[#63df4e] text-white text-3xl shadow-md hover:bg-[#6df056] active:scale-95 transition"
     >
       <HiOutlineMicrophone />
     </button>

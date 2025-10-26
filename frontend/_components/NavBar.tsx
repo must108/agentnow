@@ -2,6 +2,8 @@ import Image from "next/image";
 import Icon from "@/app/favicon.ico";
 import Name from "./Name";
 import Button from "./Button";
+import { GoSearch } from "react-icons/go";
+import { HiOutlineMicrophone } from "react-icons/hi2";
 
 export default function NavBar() {
   return (
@@ -14,17 +16,17 @@ export default function NavBar() {
       <div className="flex space-x-4">
         {/* Find Accelerator */}
         <div className="relative group">
-          <Button>Find Accelerator</Button>
+          <Button> <GoSearch /></Button>
           <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-3 py-1 text-xs text-white bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition">
-            Chat with AI agent
+            Text Chat
           </span>
         </div>
 
         {/* Chat with Agent */}
         <div className="relative group">
-          <Button>Chat with Agent</Button>
+          <Button> <HiOutlineMicrophone /></Button>
           <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-3 py-1 text-xs text-white bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition">
-            Voice chat with AI agent
+            Voice Chat
           </span>
         </div>
       </div>

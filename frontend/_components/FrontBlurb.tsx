@@ -3,13 +3,14 @@ import RightSection from "./RightBlurb";
 
 export default function FrontBlurb() {
   return (
-    <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 px-8 py-16 max-w-7xl mx-auto w-full">
-    
-      <div className="flex justify-start">
+    <section className="flex flex-col items-center px-8 py-16 max-w-7xl mx-auto w-full text-center">
+      {/* Blurb centered */}
+      <div className="mb-4">
         <Blurb />
       </div>
 
-      <div className="flex justify-end">
+      {/* RightBlurb slightly under it */}
+      <div className="mt-2">
         <RightSection />
       </div>
     </section>

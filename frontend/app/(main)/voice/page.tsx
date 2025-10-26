@@ -1,4 +1,5 @@
 "use client";
+import { HiOutlineMicrophone } from "react-icons/hi2";
 
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 
@@ -134,35 +135,42 @@ export default function Voice() {
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 p-6 select-none">
-      <button
-        id="ptt"
-        onPointerDown={(e) => { e.preventDefault(); start(); }}
-        onPointerUp={(e) => { e.preventDefault(); stop(); }}
-        onContextMenu={(e) => e.preventDefault()}
-        className="rounded-full bg-blue-500 px-6 py-3 text-white text-lg font-medium shadow-md hover:bg-blue-600 active:scale-95 transition"
-      >
-        🎙️ Hold to Talk
-      </button>
+  {/* Microphone button */}
+    <button
+      id="ptt"
+      onPointerDown={(e) => {
+        e.preventDefault();
+        start();
+      }}
+      onPointerUp={(e) => {
+        e.preventDefault();
+        stop();
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+      className="flex items-center justify-center w-20 h-20 rounded-full bg-blue-500 text-white text-3xl shadow-md hover:bg-blue-600 active:scale-95 transition"
+    >
+      <HiOutlineMicrophone />
+    </button>
 
-      <div className="mt-4 w-full max-w-md text-center text-white">
-        {displayText ? (
-          <p className="whitespace-pre-wrap">
-            {displayText}
-          </p>
-        ) : (
-          <p className="text-white italic">Press and hold to start speaking...</p>
-        )}
-      </div>
-
-      <div className="w-full max-w-md mt-2 text-sm text-white">
-        {loading && <p className="text-gray-200">Fetching response…</p>}
-        {apiError && <p className="text-red-300">Error: {apiError}</p>}
-        {apiData && (
-          <pre className="mt-2 rounded-lg bg-black/30 p-3 text-white whitespace-pre-wrap wrap-break-word">
-            {apiData}
-          </pre>
-        )}
-      </div>
+    {/* Display text */}
+    <div className="mt-4 max-w-md text-center text-white">
+      {displayText ? (
+        <p className="whitespace-pre-wrap">{displayText}</p>
+      ) : (
+        <p className="text-white italic">Press and hold to start speaking...</p>
+      )}
     </div>
+
+    {/* API responses */}
+    <div className="w-full max-w-md mt-2 text-sm text-white text-center">
+      {loading && <p className="text-gray-200">Fetching response…</p>}
+      {apiError && <p className="text-red-300">Error: {apiError}</p>}
+      {apiData && (
+        <pre className="mt-2 rounded-lg bg-black/30 p-3 text-white whitespace-pre-wrap break-words text-left">
+          {apiData}
+        </pre>
+      )}
+    </div>
+  </div>
   );
 }

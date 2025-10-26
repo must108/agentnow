@@ -1,8 +1,11 @@
 import os
 import numpy as np
 from google import genai
+import pandas as pd
 
 LOCAL_MODEL = None
+EMBED_BACKEND = "gemini"
+BACKEND_LOCKED = False
 
 # various helpers :)
 
@@ -32,13 +35,28 @@ def normalize(vec):
     return vec/denom
 
 def fully_embed(client, texts, task, use_local=True):
-    try:
-        vec = gemini_model(client, texts, task)
-        return vec
-    except genai.errors.ClientError:
-        if use_local:
-            print("gemini rate limited...")
-            return local_embedding(texts)
+    global EMBED_BACKEND, BACKEND_LOCKED
+    if EMBED_BACKEND == "gemini":
+        try:
+            vec = gemini_model(client, texts, task)
+            BACKEND_LOCKED = True
+            return vec
+        except Exception:
+            if use_local:
+                print("gemini rate limited... falling back to local and locking backend")
+                EMBED_BACKEND = "local"
+                BACKEND_LOCKED = True
+                return local_embedding(texts)
+            raise
+    BACKEND_LOCKED = True
+    return local_embedding(texts)
+        
+def convert(row, cols):
+    parts = []
+    for c in cols:
+        if pd.notna(row[c]) and str(row[c].strip()):
+            parts.append(str(row[c]).strip())
+    return " | ".join(parts)
 
 def save_cache(vec_path, text_path, vec, texts):
     os.makedirs(os.path.dirname(vec_path), exist_ok=True)

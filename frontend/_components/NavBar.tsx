@@ -7,7 +7,7 @@ import { HiOutlineMicrophone } from "react-icons/hi2";
 
 export default function NavBar() {
   return (
-    <nav className="flex items-center justify-between bg-[#073561] px-6 py-4 border-b border-white">
+    <nav className="flex items-center justify-between bg-[#e8ecee] px-6 py-4 border-b border-white">
       <div className="flex items-center space-x-2">
         <Image src={Icon} alt="AccelNow Logo" width={50} height={50} />
         <Name />

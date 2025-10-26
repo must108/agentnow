@@ -5,10 +5,13 @@ import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 import re
+import json
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse, JSONResponse
 from pydantic import BaseModel
+from collections import Counter
 
 from embed import fully_embed, normalize, save_cache, load_cache, convert
 
@@ -70,6 +73,17 @@ if req_embed is None or req_cache != reqs_texts:
 
     save_cache(REQ_VEC_PATH, REQ_TXT_PATH, vec, reqs_texts)
     req_embed, _ = load_cache(REQ_VEC_PATH, REQ_TXT_PATH)
+
+GAP_FREQ = Counter()
+
+for text in reqs_texts:
+    toks = tokenize(text)
+    for t in toks:
+        if t in REQ_TOKENS and t not in ACCEL_TOKENS:
+            GAP_FREQ[t] += 1
+
+def top_gap_topics(k):
+    return [w for w, _ in GAP_FREQ.most_common(k)]
 
 
 app = FastAPI(title="Search")
@@ -140,7 +154,8 @@ def query(payload, mode):
     else:
         results["accelerators"] = [
             {
-                "text": accel_texts[i]
+                "text": accel_texts[i],
+                "title": accel_df.iloc[i]["name"]
             }
             for i in accel_idxs
         ]
@@ -155,34 +170,188 @@ def query(payload, mode):
             for i in req_idxs
         ]
 
-    system_text = (
-        "You are an AI request analysis agent designed "
-        "to assist the ServiceNow Technical Accelerators program. "
-        "Your purpose is to analyze and interpret requests from "
-        "internal teams or clients. You will receive "
-        "JSON with the top accelerators for a given request, and you "
-        "must recommend this to the client. If there are no matching"
-        "accelerators or user requests, communicate that the query is unknown to you,"
-        "and that you only know about accelerators."
-    )
+    if bad_message:
+        use_case_type = "not_relevant"
+    elif req_best_score >= 0.15:
+        use_case_type = "existing_user_request"
+    elif accel_best_score >= 0.15:
+        use_case_type = "non_existing_user_request"
+    else:
+        use_case_type = "not_relevant"
 
+    results["use_case"] = use_case_type
+    results["gap_topics"] = top_gap_topics(7)
+
+    system_text = ""
     if mode == "voice":
-        system_text += "RESPOND IN PLAIN TEXT ONLY. NO MARKDOWN!"
+        system_text += (
+            " RESPOND IN PLAIN TEXT ONLY (NO MARKDOWN). "
+            "Then provide a compact JSON OBJECT at the very end with keys {\"title\": string, \"text\": string} "
+            "for the single best accelerator (if any). elaborate a bit on the accelerator for the text field."
+            "If no accelerator is appropriate, use an empty string for \"title\" and still provide \"text\". "
+            "State clearly whether the user's use case is: "
+            "\"existing user request\", \"non existing user request\", or \"not relevant to accelerators or tech at all\". "
+            "If the user asks about accelerators that are in demand but not in the current portfolio, use the provided "
+            "gap topics to discuss the most requested missing areas and suggest next steps. In this case, it would not be a user request, but a non existing one."
+        )
+    else:
+        system_text += (
+            "Provide a compact JSON OBJECT at the very end with keys {\"title\": string, \"text\": string} "
+            "for the single best accelerator (if any). elaborate a bit on the accelerator for the text field."
+            "If no accelerator is appropriate, use an empty string for \"title\" and still provide \"text\". "
+            "State clearly whether the user's use case is: "
+            "\"existing user request\", \"non existing user request\", or \"not relevant to accelerators or tech at all\". "
+            "If the user asks about accelerators that are in demand but not in the current portfolio, use the provided "
+            "gap topics to discuss the most requested missing areas and suggest next steps. In this case, it would not be a user request, but a non existing one."
+        )
+        
+    system_text += "If the query is not relevant, please say: 'This query is not related to accelerators.', and ask for a query related to accelerators. Do not provide the JSON object in this case."
 
     model = genai.GenerativeModel(
         model_name="gemini-2.5-flash",
         system_instruction=system_text
     )
 
-    model_input = (
-        f"User query:\n{payload}\n\n"
-        f"Top matching accelerators\n{results.get('accelerators', 'None')}\n\n"
-        f"Top similar User Requests:\n{results.get('user_requests','None')}\n"
-    )
+    context = {
+        "user_query": payload,
+        "use_case_hint": results.get("use_case"),
+        "top_matching_accelerators": results.get("accelerators", []),
+        "top_similar_user_requests": results.get("user_requests", []),
+        "gap_topics_in_demand_not_in_portfolio": results.get("gap_topics", []),
+    }
+    model_input = json.dumps(context, ensure_ascii=False)
 
     response = model.generate_content(model_input)
-    text = response.text
-    text = text.replace("|", "")
-    text = text.replace("\n", " ")
+    generated = (response.text or "").strip()
 
-    return text
+    title = ""
+    try:
+        import re as _re
+        m = list(_re.finditer(r"\{[^{}]*\}", generated))
+        if m:
+            tail_json = generated[m[-1].start():m[-1].end()]
+            parsed = json.loads(tail_json)
+            if isinstance(parsed, dict) and "text" in parsed and "title" in parsed:
+                title = parsed.get("title", "") or ""
+                generated = parsed.get("text", "") or generated
+    except Exception:
+        pass
+
+    if results.get("accelerators") and not title:
+        title = results["accelerators"][0].get("title", "") or ""
+
+    use_case = results.get("use_case", "unknown")
+
+    return JSONResponse({
+        "text": generated,
+        "title": title,
+        "use_case": use_case
+    })
+
+@app.get("/report")
+def report(k: int = 10, threshold: float = 0.15):
+    """
+    Returns a JSON report of insights:
+      - dataset summary
+      - coverage of user requests by accelerators (based on similarity threshold)
+      - top 'gap topics' (in-demand but not in portfolio)
+      - accelerator leaderboards (by hits and mean similarity)
+      - similarity statistics across all requests
+      - token coverage stats
+    Query params:
+      k: how many top items (gap topics, leaderboards) to return
+      threshold: similarity threshold for 'covered' requests
+    """
+    global accel_embed, req_embed
+
+    n_accel = len(accel_texts)
+    n_reqs = len(reqs_texts)
+
+    if n_accel == 0 or n_reqs == 0:
+        raise HTTPException(500, "No data loaded for accelerators or requests.")
+
+    try:
+        sim = req_embed @ accel_embed.T
+    except Exception as e:
+        raise HTTPException(500, f"Similarity computation failed: {e}")
+
+    best_idx = np.argmax(sim, axis=1)
+    best_scores = sim[np.arange(sim.shape[0]), best_idx]
+
+    covered_mask = best_scores >= threshold
+    covered_count = int(np.sum(covered_mask))
+    uncovered_count = int(n_reqs - covered_count)
+    coverage_rate = float(covered_count / max(n_reqs, 1))
+
+    hits = np.zeros(n_accel, dtype=int)
+    for i, j in enumerate(best_idx):
+        if best_scores[i] >= threshold:
+            hits[j] += 1
+
+    hit_order = np.argsort(-hits)[:k]
+    leaderboard_by_hits = [
+        {
+            "rank": int(rank + 1),
+            "accelerator_title": str(accel_df.iloc[j]["name"]),
+            "hits": int(hits[j]),
+        }
+        for rank, j in enumerate(hit_order)
+        if hits[j] > 0
+    ]
+
+    mean_sim_by_accel = np.mean(sim, axis=0)
+    mean_order = np.argsort(-mean_sim_by_accel)[:k]
+    leaderboard_by_mean = [
+        {
+            "rank": int(rank + 1),
+            "accelerator_title": str(accel_df.iloc[j]["name"]),
+            "mean_similarity": float(mean_sim_by_accel[j]),
+        }
+        for rank, j in enumerate(mean_order)
+    ]
+
+    all_scores = best_scores
+    sim_stats = {
+        "mean_best_similarity": float(np.mean(all_scores)),
+        "median_best_similarity": float(np.median(all_scores)),
+        "p90_best_similarity": float(np.percentile(all_scores, 90)),
+        "min_best_similarity": float(np.min(all_scores)),
+        "max_best_similarity": float(np.max(all_scores)),
+        "threshold": float(threshold),
+    }
+
+    req_only_tokens = [t for t in (REQ_TOKENS - ACCEL_TOKENS)]
+    accel_only_tokens = [t for t in (ACCEL_TOKENS - REQ_TOKENS)]
+    overlap_tokens = [t for t in (REQ_TOKENS & ACCEL_TOKENS)]
+
+    token_stats = {
+        "req_token_count": int(len(REQ_TOKENS)),
+        "accel_token_count": int(len(ACCEL_TOKENS)),
+        "overlap_token_count": int(len(overlap_tokens)),
+        "jaccard_overlap": float(len(overlap_tokens) / max(len(REQ_TOKENS | ACCEL_TOKENS), 1)),
+        "top_gap_topics": top_gap_topics(k),
+        "sample_req_only_tokens": req_only_tokens[:k],
+        "sample_accel_only_tokens": accel_only_tokens[:k],
+    }
+
+    report = {
+        "summary": {
+            "accelerator_count": int(n_accel),
+            "user_request_count": int(n_reqs),
+            "embedding_dim": int(accel_embed.shape[1]),
+        },
+        "coverage": {
+            "covered_requests": covered_count,
+            "uncovered_requests": uncovered_count,
+            "coverage_rate": coverage_rate,
+        },
+        "leaderboards": {
+            "by_hits": leaderboard_by_hits,
+            "by_mean_similarity": leaderboard_by_mean,
+        },
+        "similarity_stats": sim_stats,
+        "token_stats": token_stats,
+        "generated_at": pd.Timestamp.utcnow().isoformat() + "Z",
+    }
+
+    return JSONResponse(report)

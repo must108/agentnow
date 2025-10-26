@@ -1,89 +1,185 @@
-ai
+taxonomy
+event
+governance
 ml
-agent
-virtual
-genai
+project
 nlu
 nlp
-natural
-language
-understanding
-translation
-servicenow
-instance
-platform
-workflow
-cmdb
-catalog
-request
-discovery
-automation
-upgrade
-configuration
-mapping
-observer
-assessment
-readiness
-database
-migration
-analytics
-process
-mining
-itsm
-itom
-csm
-spm
-project
-planning
-workspace
-resource
-management
-incident
-problem
-change
-task
-service
-operations
-event
-subscription
-employee
-journey
-center
-hr
-experience
-onboarding
-selfservice
-portal
-search
-query
-retrieval
-semantic
-knowledge
-recommendation
-predictive
-dashboard
-metrics
 performance
-quality
-health
-kpi
-insight
-ux
-user
-design
-taxonomy
+migration
 interface
-usability
-navigation
+agent
+subscription
+natural
+workflow
+employee
+license
+ham
+metrics
+onboarding
+journey
+quality
+query
+discovery
+incident
+mining
+kpi
 adoption
-feedback
+platform
+ux
+problem
+automation
+instance
+task
+operations
+management
 security
-governance
+virtual
+upgrade
+cmdb
+configuration
+usability
+design
+service
+language
+sam
+selfservice
+hr
+knowledge
+ai
+search
+catalog
+workspace
+observer
+asset
+center
+dashboard
+assessment
+csm
+database
+software
+translation
+navigation
+feedback
+user
+mapping
+hardware
+experience
+portal
+servicenow
+predictive
+genai
+recommendation
+itom
 compliance
 policy
-asset
-software
-hardware
-sam
-ham
-license
+planning
+readiness
+change
+retrieval
+semantic
+process
+understanding
+request
+resource
+itsm
+spm
+jumpstart your
+possibilities capabilities
+demonstration possibilities
+tuneup your
+prescriptive guidance
+virtual agent
+employee center
+your employee
+your ai
+applied demonstration
+asset management
+ai search
+your virtual
+optimize value.
+management demonstration
+guidance fine-tuning
+your assist
+maintaining governing
+guidance maintaining
+capabilities assist
+ai agents
+your spm
+your servicenow
+your service
+your platform
+your instance
+workspaces strategic
+strategic portfolio
+service management
+recommendations prescriptive
+prescriptive guidance.
+practice recommendations
+portfolio management
+optimize value
+natural language
+management spm
+leading practice
+instance readiness
+healthscan leading
+guidance understanding
+guidance how
+fine-tuning virtual
+demonstration how
+assessment your
+your
+jumpstart
+demonstration
+capabilities
+possibilities
+guidance
+prescriptive
+tuneup
+how
+optimize
+applied
+assist
+value.
+recommendations
+fine-tuning
+users
+overview
+maintaining
+leading
+introduction
+governing
+actionable
+intelligence
+data
+content
+csdm
+agents
+workspaces
+value
+strategic
+review
+practice
+portfolio
+implementation
+healthscan
+guidance.
+features
+enhance
+success
+tools
+started
+overall
+kickstart
+insights
+improvement
+improve
+help
+extending
+extend
+expert
+empower
+efficiently
+delivery
+customer
+age

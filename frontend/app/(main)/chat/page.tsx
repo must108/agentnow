@@ -78,21 +78,29 @@ export default function Chatbot() {
           {messages.map((m, i) => (
             <div
               key={i}
-              className={`max-w-[85%] whitespace-pre-wrap wrap-break-word rounded-2xl px-4 py-2 text-sm ${
-                m.role === "user"
-                  ? "ml-auto bg-blue-600 text-white shadow"
-                  : m.role === "assistant"
-                  ? "mr-auto bg-[#63df4e] text-black"
-                  : "mx-auto bg-neutral-300 text-neutral-700"
+              className={`flex w-full ${
+                m.role === "user" ? "justify-end" : "justify-start"
               }`}
             >
-              <ReactMarkdown>{m.text}</ReactMarkdown>
+              <div
+                className={`inline-block max-w-[75%] whitespace-pre-wrap break-words rounded-2xl px-4 py-2 text-sm ${
+                  m.role === "user"
+                    ? "bg-blue-600 text-white shadow"
+                    : m.role === "assistant" || m.role === "system"
+                    ? "bg-[#63df4e] text-black"
+                    : ""
+                }`}
+              >
+                <ReactMarkdown>{m.text}</ReactMarkdown>
+              </div>
             </div>
           ))}
 
           {loading && (
-            <div className="mr-auto max-w-[70%] rounded-2xl bg-[#63df4e]/70 px-4 py-2 text-sm text-black">
-              Thinking…
+            <div className="flex w-full justify-start">
+              <div className="inline-block max-w-[75%] rounded-2xl bg-[#63df4e]/70 px-4 py-2 text-sm text-black">
+                Thinking…
+              </div>
             </div>
           )}
           <div ref={endRef} />

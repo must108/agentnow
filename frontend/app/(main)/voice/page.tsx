@@ -85,10 +85,10 @@ export default function Voice() {
           const url = `http://127.0.0.1:8000/query?payload=${encodeURIComponent(finalText)}&mode=voice`;
           const res = await fetch(url, { method: "GET" });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const data = await res.text();
-          setApiData(data);
+          const data = await res.json();
+          setApiData(data.title);
 
-          const reply = data;
+          const reply = data.text;
           speak(reply);
         } catch (e: any) {
           setApiError(e?.message || "Request failed");

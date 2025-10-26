@@ -74,3 +74,5 @@ def load_cache(vec_path, text_path):
     with open(text_path, "r", encoding="utf-8") as f:
         texts = [line.rstrip("\n") for line in f]
     return vec, texts
+
+

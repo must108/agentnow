@@ -1,6 +1,8 @@
 .env
 venv
 
+/node_modules
+
 user_text.txt
 accel_text.txt
 user_vectors.npy

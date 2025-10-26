@@ -311,7 +311,7 @@ export default function AssistWrapperPage() {
               <div className="rounded-xl bg-white/5 p-4">
                 <div className="mb-1 text-sm text-white/70">Suggestion</div>
                 <p
-                  className={`whitespace-pre-wrap break-words text-sm opacity-90 ${
+                  className={`whitespace-pre-wrap wrap-break-word text-sm opacity-90 ${
                     typing ? "border-r-2 border-white pr-1 animate-pulse" : ""
                   }`}
                 >
@@ -324,7 +324,7 @@ export default function AssistWrapperPage() {
                   <div className="mb-1 text-sm text-white/70">
                     Your recent utterance
                   </div>
-                  <p className="text-xs opacity-80 whitespace-pre-wrap break-words">
+                  <p className="text-xs opacity-80 whitespace-pre-wrap wrap-break-word">
                     {lastUtterance}
                   </p>
                 </div>
@@ -371,7 +371,7 @@ export default function AssistWrapperPage() {
                           <summary className="cursor-pointer select-none opacity-90">
                             Utterance
                           </summary>
-                          <div className="mt-1 whitespace-pre-wrap break-words">
+                          <div className="mt-1 whitespace-pre-wrap wrap-break-word">
                             {h.utterance}
                           </div>
                         </details>

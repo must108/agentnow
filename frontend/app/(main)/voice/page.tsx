@@ -228,7 +228,7 @@ export default function Voice() {
               </div>
             )}
 
-            {/* <p className="whitespace-pre-wrap wrap-break-words text-sm opacity-90 mt-2 text-center">
+            {/* <p className="whitespace-pre-wrap wrap-wrap-break-word text-sm opacity-90 mt-2 text-center">
               {apiData.text}
             </p> */}
           </div>
@@ -266,7 +266,7 @@ export default function Voice() {
                 {h.utterance && (
                   <details className="mt-2 text-[11px] text-white/70">
                     <summary className="cursor-pointer select-none opacity-90">Your utterance</summary>
-                    <div className="mt-1 whitespace-pre-wrap break-words">{h.utterance}</div>
+                    <div className="mt-1 whitespace-pre-wrap wrap-break-word">{h.utterance}</div>
                   </details>
                 )}
                 <div className="mt-2 text-[10px] text-white/50">

@@ -56,7 +56,7 @@ export default function AcceleratorDashboard() {
         const json = await res.json();
         if (!cancelled) setData(json);
       } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? "Failed to load");
+        if (!cancelled) setError(e?.message ?? "Try prompting our agent first!");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -86,7 +86,7 @@ export default function AcceleratorDashboard() {
       <div className="mx-auto max-w-7xl p-8 text-white bg-[#073561]">
         <Card className="bg-black/30 text-white">
           <CardHeader>
-            <CardTitle>Failed to load</CardTitle>
+            <CardTitle>Try prompting our agent first!</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-red-400">
             {error ?? "No data returned"}
@@ -309,10 +309,6 @@ export default function AcceleratorDashboard() {
         </CardContent>
       </Card>
 
-      <div className="text-xs text-white/60">
-        Generated at:{" "}
-        {new Date(data.generated_at ?? new Date().toISOString()).toLocaleString()}
-      </div>
     </div>
   );
 }

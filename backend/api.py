@@ -6,6 +6,7 @@ import pandas as pd
 from dotenv import load_dotenv
 import re
 import json
+from threading import Lock
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +15,10 @@ from pydantic import BaseModel
 from collections import Counter
 
 from embed import fully_embed, normalize, save_cache, load_cache, convert
+
+# ---------------------------
+# Setup & Globals
+# ---------------------------
 
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
@@ -33,15 +38,23 @@ ACCEL_TXT_PATH = "data/accel_text.txt"
 REQ_VEC_PATH = "data/user_vectors.npy"
 REQ_TXT_PATH = "data/user_text.txt"
 
+# Concurrency guard for request logging / embedding updates
+REQ_LOCK = Lock()
+
+def _norm_text(s: str) -> str:
+    """Normalize text for dedup: lowercase + collapse whitespace."""
+    return re.sub(r"\s+", " ", (s or "").strip().lower())
+
+# ---------------------------
+# Load data
+# ---------------------------
+
 try:
     accel_df = pd.read_csv("data/accelerators.csv", encoding="utf-8")
     reqs_df = pd.read_csv("data/u_hack.csv", encoding="utf-8")
 except UnicodeDecodeError:
     accel_df = pd.read_csv("data/accelerators.csv", encoding="cp1252")
     reqs_df = pd.read_csv("data/u_hack.csv", encoding="cp1252")
-
-accel_texts = []
-reqs_texts = []
 
 accel_cols = ['name', 'description']
 reqs_cols = ["number", "capability", "company", "description", "initiative_title", "primary_category"]
@@ -65,22 +78,22 @@ tokenize = lambda x: set(re.findall(r"[a-z0-9]+", x.lower()))
 accel_embed, accel_cache = load_cache(ACCEL_VEC_PATH, ACCEL_TXT_PATH)
 req_embed, req_cache = load_cache(REQ_VEC_PATH, REQ_TXT_PATH)
 
+# Ensure accelerator embeddings
 if accel_embed is None or accel_cache != accel_texts:
     vec = fully_embed(client, accel_texts, "RETRIEVAL_DOCUMENT", True)
     vec = normalize(vec)
-
     save_cache(ACCEL_VEC_PATH, ACCEL_TXT_PATH, vec, accel_texts)
     accel_embed, _ = load_cache(ACCEL_VEC_PATH, ACCEL_TXT_PATH)
 
+# Ensure request embeddings
 if req_embed is None or req_cache != reqs_texts:
     vec = fully_embed(client, reqs_texts, "RETRIEVAL_DOCUMENT", True)
     vec = normalize(vec)
-
     save_cache(REQ_VEC_PATH, REQ_TXT_PATH, vec, reqs_texts)
     req_embed, _ = load_cache(REQ_VEC_PATH, REQ_TXT_PATH)
 
+# Initial gap frequencies
 GAP_FREQ = Counter()
-
 for text in reqs_texts:
     toks = tokenize(text)
     for t in toks:
@@ -90,6 +103,84 @@ for text in reqs_texts:
 def top_gap_topics(k):
     return [w for w, _ in GAP_FREQ.most_common(k)]
 
+# ---------------------------
+# Persistence / Incremental embedding
+# ---------------------------
+
+def persist_user_request(text: str, meta: dict | None = None):
+    """
+    Persist a new user request and update embeddings/caches incrementally.
+
+    Steps:
+    - Deduplicate by normalized text
+    - Append to reqs_texts/reqs_df
+    - Embed only the new text; if dim mismatch, re-embed all
+    - Update caches (npy + txt), token sets, GAP_FREQ
+    - Save CSV back to disk
+    """
+    global reqs_df, reqs_texts, req_embed, REQ_TOKENS, GAP_FREQ
+
+    t_clean = (text or "").strip()
+    if not t_clean:
+        return {"status": "skipped", "reason": "empty"}
+
+    # Dedup
+    nset = {_norm_text(t) for t in reqs_texts}
+    if _norm_text(t_clean) in nset:
+        return {"status": "skipped", "reason": "duplicate"}
+
+    with REQ_LOCK:
+        # ---- 1) Append in memory and DataFrame (keep schema) ----
+        reqs_texts.append(t_clean)
+
+        new_row = {
+            "number": "",
+            "capability": "",
+            "company": "",
+            "description": t_clean,
+            "initiative_title": "",
+            "primary_category": "",
+        }
+        reqs_df = pd.concat([reqs_df, pd.DataFrame([new_row])], ignore_index=True)
+
+        # ---- 2) Embed & update req_embed ----
+        try:
+            new_vec = fully_embed(client, [t_clean], "RETRIEVAL_DOCUMENT", True)
+            new_vec = normalize(new_vec)
+        except Exception as e:
+            return {"status": "error", "reason": f"embed_failed: {e}"}
+
+        if req_embed is None:
+            req_embed = new_vec
+        else:
+            if new_vec.shape[1] != req_embed.shape[1]:
+                # Mismatch (e.g., model changed) -> re-embed all
+                all_vecs = fully_embed(client, reqs_texts, "RETRIEVAL_DOCUMENT", True)
+                req_embed = normalize(all_vecs)
+            else:
+                req_embed = np.vstack([req_embed, new_vec])
+
+        # ---- 3) Save cache to disk ----
+        save_cache(REQ_VEC_PATH, REQ_TXT_PATH, req_embed, reqs_texts)
+
+        # ---- 4) Update tokens & gap counts ----
+        toks = tokenize(t_clean)
+        REQ_TOKENS.update(toks)
+        for t in toks:
+            if t in REQ_TOKENS and t not in ACCEL_TOKENS:
+                GAP_FREQ[t] += 1
+
+        # ---- 5) Save CSV ----
+        try:
+            reqs_df.to_csv("data/u_hack.csv", index=False, encoding="utf-8")
+        except Exception:
+            reqs_df.to_csv("data/u_hack.csv", index=False, encoding="cp1252")
+
+    return {"status": "ok"}
+
+# ---------------------------
+# FastAPI App
+# ---------------------------
 
 app = FastAPI(title="Search")
 
@@ -103,9 +194,32 @@ app.add_middleware(
 
 @app.get("/hello")
 def hello():
-    return {
-        "message": "hello, world!"
-    }
+    return {"message": "hello, world!"}
+
+# Optional: manual ingestion endpoint
+class RequestIn(BaseModel):
+    text: str
+    meta: dict | None = None
+
+@app.post("/requests")
+def add_request(body: RequestIn):
+    res = persist_user_request(body.text, body.meta)
+    if res.get("status") == "error":
+        raise HTTPException(500, res.get("reason", "unknown"))
+    return res
+
+# Optional: full reindex (if model changed)
+@app.post("/reindex")
+def reindex_requests():
+    global req_embed
+    try:
+        with REQ_LOCK:
+            vec = fully_embed(client, reqs_texts, "RETRIEVAL_DOCUMENT", True)
+            req_embed = normalize(vec)
+            save_cache(REQ_VEC_PATH, REQ_TXT_PATH, req_embed, reqs_texts)
+        return {"status": "ok", "count": len(reqs_texts)}
+    except Exception as e:
+        raise HTTPException(500, f"reindex_failed: {e}")
 
 @app.get("/query")
 def query(payload, mode):
@@ -127,11 +241,12 @@ def query(payload, mode):
     if q_vec.ndim == 1:
         q_vec = q_vec[None, :]
 
+    # Ensure dims match against current caches (rebuild if needed)
     if q_vec.shape[1] != accel_embed.shape[1]:
-         vec = fully_embed(client, accel_texts, "RETRIEVAL_DOCUMENT", True)
-         vec = normalize(vec)
-         save_cache(ACCEL_VEC_PATH, ACCEL_TXT_PATH, vec, accel_texts)
-         accel_embed, _ = load_cache(ACCEL_VEC_PATH, ACCEL_TXT_PATH)
+        vec = fully_embed(client, accel_texts, "RETRIEVAL_DOCUMENT", True)
+        vec = normalize(vec)
+        save_cache(ACCEL_VEC_PATH, ACCEL_TXT_PATH, vec, accel_texts)
+        accel_embed, _ = load_cache(ACCEL_VEC_PATH, ACCEL_TXT_PATH)
 
     if q_vec.shape[1] != req_embed.shape[1]:
         vec = fully_embed(client, reqs_texts, "RETRIEVAL_DOCUMENT", True)
@@ -187,6 +302,22 @@ def query(payload, mode):
     results["use_case"] = use_case_type
     results["gap_topics"] = top_gap_topics(7)
 
+    # ✅ NEW: persist all accelerator-relevant queries as user requests
+    if use_case_type != "not_relevant":
+        try:
+            persist_user_request(
+                q,
+                meta={
+                    "mode": mode,
+                    "accel_best_score": accel_best_score,
+                    "req_best_score": req_best_score,
+                },
+            )
+        except Exception:
+            # don't block response if logging fails
+            pass
+
+    # ----- LLM synthesis -----
     system_text = ""
     if mode == "voice":
         system_text += (

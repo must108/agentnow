@@ -1,17 +1,38 @@
 "use client";
 
+/* eslint-disable  @typescript-eslint/no-explicit-any */
+
 import { useEffect, useRef, useState } from "react";
 
 export default function Voice() {
   const recognitionRef = useRef<any>(null);
   const runningRef = useRef(false);
 
-  // refs hold the authoritative text (no re-renders required)
   const finalRef = useRef("");
   const interimRef = useRef("");
+  const [apiData, setApiData] = useState<any>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // state is just for UI display
   const [displayText, setDisplayText] = useState("");
+
+  const speak = async (text: string) => {
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      await audio.play();
+    } catch (err) {
+      console.warn("TTS error:", err);
+    }
+  };
 
   useEffect(() => {
     const SR =
@@ -44,14 +65,36 @@ export default function Voice() {
       setDisplayText((finalRef.current + " " + interimRef.current).trim());
     };
 
-    r.onend = () => {
+    r.onend = async () => {
       runningRef.current = false;
-      // commit any remaining interim to final on end
+
       if (interimRef.current) {
         finalRef.current = (finalRef.current ? finalRef.current + " " : "") + interimRef.current.trim();
         interimRef.current = "";
         setDisplayText(finalRef.current);
       }
+
+      const finalText = finalRef.current.trim();
+
+      if (finalText) {
+        setLoading(true);
+        setApiError(null);
+        setApiData(null);
+        try {
+          const url = `http://127.0.0.1:8000/query?payload=${encodeURIComponent(finalText)}&mode=voice`;
+          const res = await fetch(url, { method: "GET" });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          setApiData(data);
+        } catch (e: any) {
+          setApiError(e?.message || "Request failed");
+        } finally {
+          setLoading(false);
+        }
+
+        speak(finalText)
+      }
+
       window.postMessage({ type: "VOICE_TEXT", text: finalRef.current });
     };
 
@@ -66,13 +109,14 @@ export default function Voice() {
       try { r.stop(); } catch {}
       runningRef.current = false;
     };
-  }, []); // IMPORTANT: set up once
+  }, []);
 
   const start = () => {
     if (!recognitionRef.current || runningRef.current) return;
-    // reset per-session interim (keep previous final if you want to append across presses)
     finalRef.current = "";
     interimRef.current = "";
+    setApiData(null);
+    setApiError(null);
     setDisplayText("");
     try {
       recognitionRef.current.start();
@@ -82,7 +126,6 @@ export default function Voice() {
 
   const stop = () => {
     if (!recognitionRef.current || !runningRef.current) return;
-    // slight delay so Chrome can deliver the last final result
     setTimeout(() => {
       try { recognitionRef.current.stop(); } catch {}
     }, 120);
@@ -107,6 +150,16 @@ export default function Voice() {
           </p>
         ) : (
           <p className="text-white italic">Press and hold to start speaking...</p>
+        )}
+      </div>
+
+      <div className="w-full max-w-md mt-2 text-sm text-white">
+        {loading && <p className="text-gray-200">Fetching response…</p>}
+        {apiError && <p className="text-red-300">Error: {apiError}</p>}
+        {apiData && (
+          <pre className="mt-2 rounded-lg bg-black/30 p-3 text-white whitespace-pre-wrap wrap-break-word">
+            {apiData}
+          </pre>
         )}
       </div>
     </div>

@@ -1,4 +1,5 @@
-from google import genai
+from google import genai as genai_client
+import google.generativeai as genai
 import os
 import numpy as np
 import pandas as pd
@@ -13,7 +14,8 @@ from embed import fully_embed, normalize, save_cache, load_cache, convert
 
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
-client = genai.Client()
+client = genai_client.Client(api_key=api_key)
+genai.configure(api_key=api_key)
 
 TOP_K = 3
 
@@ -87,7 +89,7 @@ def hello():
     }
 
 @app.get("/query")
-def query(payload):
+def query(payload, mode):
     global accel_embed, req_embed
     q = payload.strip()
 
@@ -130,8 +132,11 @@ def query(payload):
     accel_best_score = float(accel_similarities[accel_best_idx])
     req_best_score = float(req_similarities[req_best_idx])
     
+    bad_message = False
+
     if accel_best_score < 0.15:
-        results["message"] = "We don't seem to have an accelerator related to this query yet!"
+        results["message"] = "Please only speak to me about technical accelerators. It's all I know."
+        bad_message = True
     else:
         results["accelerators"] = [
             {
@@ -140,8 +145,8 @@ def query(payload):
             for i in accel_idxs
         ]
 
-    if req_best_score < 0.15:
-        results["message"] = "We don't seem to have an user request related to this query yet!"
+    if req_best_score < 0.15 or bad_message:
+        results["message"] = "Please only speak to me about technical accelerators. It's all I know."
     else:
         results["user_requests"] = [
             {
@@ -150,4 +155,31 @@ def query(payload):
             for i in req_idxs
         ]
 
-    return results
+    system_text = (
+        "You are an AI request analysis agent designed "
+        "to assist the ServiceNow Technical Accelerators program. "
+        "Your purpose is to analyze and interpret requests from "
+        "internal teams or clients. You will receive "
+        "JSON with the top accelerators for a given request, and you "
+        "must recommend this to the client. If there are no matching"
+        "accelerators or user requests, communicate that the query is unknown to you,"
+        "and that you only know about accelerators."
+    )
+
+    if mode == "voice":
+        system_text += "RESPOND IN PLAIN TEXT ONLY. NO MARKDOWN!"
+
+    model = genai.GenerativeModel(
+        model_name="gemini-2.5-flash",
+        system_instruction=system_text
+    )
+
+    model_input = (
+        f"User query:\n{payload}\n\n"
+        f"Top matching accelerators\n{results.get('accelerators', 'None')}\n\n"
+        f"Top similar User Requests:\n{results.get('user_requests','None')}\n"
+    )
+
+    response = model.generate_content(model_input)
+
+    return response.text

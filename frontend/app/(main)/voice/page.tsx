@@ -5,13 +5,19 @@ import { HiOutlineMicrophone } from "react-icons/hi2";
 
 import { useEffect, useRef, useState } from "react";
 
+type ModelProps = {
+  text: string;
+  title: string;
+  use_case?: "existing_user_request" | "non_existing_user_request" | "not_relevant" | "unknown" | string;
+}
+
 export default function Voice() {
   const recognitionRef = useRef<any>(null);
   const runningRef = useRef(false);
 
   const finalRef = useRef("");
   const interimRef = useRef("");
-  const [apiData, setApiData] = useState<any>(null);
+  const [apiData, setApiData] = useState<ModelProps | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -85,11 +91,24 @@ export default function Voice() {
           const url = `http://127.0.0.1:8000/query?payload=${encodeURIComponent(finalText)}&mode=voice`;
           const res = await fetch(url, { method: "GET" });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const data = await res.json();
-          setApiData(data.title);
 
-          const reply = data.text;
-          speak(reply);
+          let parsed: ModelProps;
+
+          const contentType = res.headers.get("content-type") || "";
+          if (contentType.includes("application/json")) {
+            const data = await res.json();
+            parsed = {
+              text: data?.text ?? "",
+              title: data?.title ?? "",
+              use_case: data?.use_case ?? "unknown",
+            };
+          } else {
+            const txt = await res.text();
+            parsed = { text: txt, title: "", use_case: "not_relevant" };
+          }
+
+          setApiData(parsed);
+          speak(parsed.text);
         } catch (e: any) {
           setApiError(e?.message || "Request failed");
         } finally {
@@ -135,7 +154,6 @@ export default function Voice() {
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 p-6 select-none">
-  {/* Microphone button */}
     <button
       id="ptt"
       onPointerDown={(e) => {
@@ -152,7 +170,6 @@ export default function Voice() {
       <HiOutlineMicrophone />
     </button>
 
-    {/* Display text */}
     <div className="mt-4 max-w-md text-center text-white">
       {displayText ? (
         <p className="whitespace-pre-wrap">{displayText}</p>
@@ -161,14 +178,27 @@ export default function Voice() {
       )}
     </div>
 
-    {/* API responses */}
     <div className="w-full max-w-md mt-2 text-sm text-white text-center">
       {loading && <p className="text-gray-200">Fetching response…</p>}
       {apiError && <p className="text-red-300">Error: {apiError}</p>}
       {apiData && (
-        <pre className="mt-2 rounded-lg bg-black/30 p-3 text-white whitespace-pre-wrap break-words text-left">
-          {apiData}
-        </pre>
+        <div className="mt-2 rounded-lg bg-black/30 p-3 text-white text-center space-y-2">
+          {apiData.title ? (
+            <h3 className="text-lg font-semibold">{apiData.title}</h3>
+          ) : (
+            <h3 className="text-lg font-semibold text-gray-300">No accelerator title</h3>
+          )}
+
+          {apiData.use_case && (
+            <span className="inline-block rounded-full bg-white/10 px-2 py-1 text-xs uppercase tracking-wide">
+              {apiData.use_case.replaceAll("_", " ")}
+            </span>
+          )}
+
+          {/* <pre className="whitespace-pre-wrap wrap-break-words text-sm opacity-90">
+            {apiData.text}
+          </pre> */}
+        </div>
       )}
     </div>
   </div>

@@ -1,26 +1,19 @@
-// export default function title() {
-//     return (
-//         <h1 className="text-5xl font-bold text-[#63df4e]">
-//             accelnow
-//         </h1>
-//     )
-// }
-
 import Image from "next/image";
-import SNIcon from "@/imgs/SN.png";
+import NowIcon from "@/imgs/now.png";
 
 export default function Title() {
   return (
-    <h1 className="text-5xl font-bold text-[#63df4e] flex items-center">
-        <span>agentn</span>
-        <Image
-            src={SNIcon}
-            alt="O icon"
-            width={40}
-            height={20}
-            className="relative -bottom-0.5"
-        />
-        <span>w</span>
-        </h1>
+    <h1 className="text-5xl font-bold flex items-center">
+      <span className="text-[#63df4e]">agent</span>
+      <Image
+        src={NowIcon}
+        alt="now icon"
+        width={105}
+        height={50}
+        className="relative top-1 ml-1"
+      />
+    </h1>
   );
 }
+
+

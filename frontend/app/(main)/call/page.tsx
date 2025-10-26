@@ -13,6 +13,7 @@ type ModelProps = {
     | "unknown"
     | string;
 };
+import { FaWandMagicSparkles } from "react-icons/fa6";
 
 type HistoryItem = {
   id: string;
@@ -250,7 +251,7 @@ export default function AssistWrapperPage() {
       <header className="sticky top-0 z-10 border-b border-white/10 bg-[#073561]/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-[#63df4e]" />
+            <FaWandMagicSparkles />
             <h1 className="text-lg font-semibold">Meeting Assist</h1>
           </div>
 
@@ -258,7 +259,7 @@ export default function AssistWrapperPage() {
             {!listening ? (
               <button
                 onClick={start}
-                className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-green-500"
+                className="rounded-xl bg-[#63df4e] px-4 py-2 text-sm font-medium text-white shadow hover:bg-[#6df056]" 
               >
                 Start
               </button>

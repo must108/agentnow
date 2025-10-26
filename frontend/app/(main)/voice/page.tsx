@@ -1,9 +1,10 @@
 "use client";
-import { HiOutlineMicrophone } from "react-icons/hi2";
 
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 
 import { useEffect, useRef, useState } from "react";
+import { HiSparkles } from "react-icons/hi";
+import { HiOutlineMicrophone } from "react-icons/hi2";
 
 type ModelProps = {
   text: string;
@@ -175,7 +176,7 @@ export default function Voice() {
   return (
     <div className="flex flex-col items-center justify-center gap-6 p-6 select-none bg-[#073561]">
       <div className="flex items-center gap-3">
-        <div className="h-8 w-8 rounded-lg bg-[#63df4e]" />
+        <HiSparkles />
         <h1 className="text-lg font-semibold">Speak with an AI Agent</h1>
       </div>
       <button

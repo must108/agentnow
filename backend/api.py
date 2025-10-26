@@ -151,18 +151,3 @@ def query(payload):
         ]
 
     return results
-
-'''
-<button id="ptt">🎙️ Hold to talk</button>
-<script>
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const r = new SR(); r.lang="en-US"; r.interimResults=true; r.continuous=false;
-  let finalText = "";
-  r.onresult = e => finalText = [...e.results].map(x=>x[0].transcript).join("");
-  r.onend = () => window.postMessage({ type:"VOICE_TEXT", text: finalText });
-  const btn = document.getElementById("ptt");
-  btn.onmousedown = ()=>r.start();
-  btn.onmouseup   = ()=>r.stop();
-</script>
-
-'''

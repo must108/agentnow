@@ -1,11 +1,14 @@
-import { AnchorHTMLAttributes } from "react";
+import { ButtonHTMLAttributes } from "react";
 
-// sample component!
-export default function Button({ children }: AnchorHTMLAttributes<HTMLAnchorElement>) {
-    return (
-        <button className="text-white font-bold bg-blue-500 w-30 hover:bg-blue-700 transition-colors rounded-md p-2"
-        >
-            {children}
-        </button>
-    )
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
+
+export default function Button({ children, ...props }: ButtonProps) {
+  return (
+    <button
+      {...props}
+      className="inline-block w-auto bg-white text-blue-600 font-semibold px-4 py-2 rounded-md hover:bg-gray-100 transition-colors"
+    >
+      {children}
+    </button>
+  );
 }

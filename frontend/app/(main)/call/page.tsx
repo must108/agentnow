@@ -1,5 +1,4 @@
 "use client";
-
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -7,26 +6,29 @@ import { useEffect, useMemo, useRef, useState } from "react";
 type ModelProps = {
   text: string;
   title: string;
-  use_case?: "existing_user_request" | "non_existing_user_request" | "not_relevant" | "unknown" | string;
+  use_case?:
+    | "existing_user_request"
+    | "non_existing_user_request"
+    | "not_relevant"
+    | "unknown"
+    | string;
 };
 
 type HistoryItem = {
   id: string;
   title: string;
   text: string;
-  use_case: string;  // snake_case to match backend
+  use_case: string;
   utterance: string;
   at: number;
 };
 
 export default function AssistWrapperPage() {
-  // ---------- SpeechRecognition (same pattern as Voice) ----------
   const recognitionRef = useRef<any>(null);
   const runningRef = useRef(false);
   const finalRef = useRef("");
   const interimRef = useRef("");
 
-  // ---------- UI state ----------
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,18 +36,22 @@ export default function AssistWrapperPage() {
   const [typing, setTyping] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
-  // latest suggestion fields (drives UI)
   const [latest, setLatest] = useState<ModelProps | null>(null);
   const title = latest?.title ?? "";
-  const text = latest?.text ?? "";
   const use_case = (latest?.use_case ?? "unknown") as string;
   const useCasePretty = use_case.replaceAll("_", " ");
   const [lastUtterance, setLastUtterance] = useState("");
 
-  // init SR
+  const sanitizeSuggestion = (s: string) =>
+    (s ?? "")
+      .replace(/\b(undefined|null)\s*$/i, "") // strip trailing undefined/null
+      .replace(/\s{2,}/g, " ")
+      .trim();
+
   useEffect(() => {
     const SR =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
     if (!SR) {
       console.warn("Speech recognition not supported.");
       setError("Speech recognition not supported in this browser.");
@@ -70,7 +76,8 @@ export default function AssistWrapperPage() {
 
       if (finalChunk) {
         finalRef.current =
-          (finalRef.current ? finalRef.current + " " : "") + finalChunk.trim();
+          (finalRef.current ? finalRef.current + " " : "") +
+          finalChunk.trim();
       }
       interimRef.current = interimChunk;
     };
@@ -79,10 +86,10 @@ export default function AssistWrapperPage() {
       runningRef.current = false;
       setListening(false);
 
-      // flush any interim into final
       if (interimRef.current) {
         finalRef.current =
-          (finalRef.current ? finalRef.current + " " : "") + interimRef.current.trim();
+          (finalRef.current ? finalRef.current + " " : "") +
+          interimRef.current.trim();
         interimRef.current = "";
       }
 
@@ -91,7 +98,6 @@ export default function AssistWrapperPage() {
 
       if (!finalText) return;
 
-      // call your backend /query same as Voice
       try {
         setError(null);
         const url = `http://127.0.0.1:8000/query?payload=${encodeURIComponent(
@@ -100,23 +106,33 @@ export default function AssistWrapperPage() {
         const res = await fetch(url, { method: "GET" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
+        const contentType = (res.headers.get("content-type") || "")
+          .toLowerCase()
+          .trim();
+
         let parsed: ModelProps;
-        const contentType = res.headers.get("content-type") || "";
         if (contentType.includes("application/json")) {
-          const data = await res.json();
+          const data = (await res.json().catch(() => ({}))) as any;
           parsed = {
-            text: data?.text ?? "",
-            title: data?.title ?? "",
-            use_case: data?.use_case ?? "unknown",
+            text: typeof data?.text === "string" ? data.text : "",
+            title: typeof data?.title === "string" ? data.title : "",
+            use_case:
+              typeof data?.use_case === "string" ? data.use_case : "unknown",
           };
         } else {
           const txt = await res.text();
-          parsed = { text: txt, title: "", use_case: "not_relevant" };
+          parsed = {
+            text: typeof txt === "string" ? txt : "",
+            title: "",
+            use_case: "not_relevant",
+          };
         }
+
+        // sanitize before setting
+        parsed.text = sanitizeSuggestion(parsed.text);
 
         setLatest(parsed);
 
-        // push into history (same shape as Voice)
         const item: HistoryItem = {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           title: parsed.title || "No accelerator title",
@@ -128,6 +144,9 @@ export default function AssistWrapperPage() {
         setHistory((h) => [item, ...h].slice(0, 50));
       } catch (e: any) {
         setError(e?.message || "Request failed");
+      } finally {
+        finalRef.current = "";
+        interimRef.current = "";
       }
     };
 
@@ -144,14 +163,20 @@ export default function AssistWrapperPage() {
 
     return () => {
       try {
-        r.stop();
+        if (
+          recognitionRef.current &&
+          typeof recognitionRef.current.abort === "function"
+        ) {
+          recognitionRef.current.abort();
+        } else {
+          r.stop();
+        }
       } catch {}
       runningRef.current = false;
       setListening(false);
     };
   }, []);
 
-  // controls
   const start = () => {
     if (!recognitionRef.current || runningRef.current) return;
     finalRef.current = "";
@@ -174,32 +199,40 @@ export default function AssistWrapperPage() {
   const stop = () => {
     if (!recognitionRef.current || !runningRef.current) return;
     try {
-      recognitionRef.current.stop();
-      // onend will fire and handle calling backend
+      if (typeof recognitionRef.current.stop === "function") {
+        recognitionRef.current.stop();
+      } else if (typeof recognitionRef.current.abort === "function") {
+        recognitionRef.current.abort();
+      }
     } catch (e: any) {
       setError(e?.message || "Failed to stop microphone.");
     }
   };
 
-  // typing effect for latest suggestion text
+  // Typewriter over sanitized text
   useEffect(() => {
-    const t = latest?.text ?? "";
+    const raw = typeof latest?.text === "string" ? latest.text : "";
+    const t = sanitizeSuggestion(raw);
+
     if (!t) {
       setDisplayedText("");
       setTyping(false);
       return;
     }
+
     setDisplayedText("");
     setTyping(true);
     let i = 0;
     const interval = setInterval(() => {
-      setDisplayedText((prev) => prev + t[i]);
-      i++;
-      if (i >= t.length) {
+      if (i < t.length - 1) {
+        setDisplayedText((prev) => prev + t[i]);
+        i++;
+      } else {
         clearInterval(interval);
         setTyping(false);
       }
     }, 20);
+
     return () => clearInterval(interval);
   }, [latest?.text]);
 
@@ -214,7 +247,6 @@ export default function AssistWrapperPage() {
 
   return (
     <div className="min-h-screen w-full bg-[#073561] text-white">
-      {/* Meeting Assist header */}
       <header className="sticky top-0 z-10 border-b border-white/10 bg-[#073561]/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
@@ -242,9 +274,7 @@ export default function AssistWrapperPage() {
         </div>
       </header>
 
-      {/* Two-column layout */}
       <main className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-6 py-6 md:grid-cols-5">
-        {/* Left: Live Suggestion */}
         <section className="md:col-span-3">
           <div className="rounded-2xl bg-black/25 p-5 ring-1 ring-white/10">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -253,10 +283,16 @@ export default function AssistWrapperPage() {
                 {headerBadge}
                 <span
                   className={`inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs ${
-                    listening ? "bg-green-500/20 text-green-200" : "bg-white/10 text-white/80"
+                    listening
+                      ? "bg-green-500/20 text-green-200"
+                      : "bg-white/10 text-white/80"
                   }`}
                 >
-                  <span className={`h-2 w-2 rounded-full ${listening ? "bg-green-400" : "bg-white/40"}`}></span>
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      listening ? "bg-green-400" : "bg-white/40"
+                    }`}
+                  ></span>
                   {listening ? "Listening" : "Idle"}
                 </span>
               </div>
@@ -265,13 +301,15 @@ export default function AssistWrapperPage() {
             <div className="space-y-3">
               <div className="rounded-xl bg-white/5 p-4">
                 <div className="mb-1 text-sm text-white/70">Title</div>
-                <div className="text-lg font-semibold">{title || "No accelerator title"}</div>
+                <div className="text-lg font-semibold">
+                  {title || "No accelerator title"}
+                </div>
               </div>
 
               <div className="rounded-xl bg-white/5 p-4">
                 <div className="mb-1 text-sm text-white/70">Suggestion</div>
                 <p
-                  className={`whitespace-pre-wrap wrap-break-word text-sm opacity-90 ${
+                  className={`whitespace-pre-wrap break-words text-sm opacity-90 ${
                     typing ? "border-r-2 border-white pr-1 animate-pulse" : ""
                   }`}
                 >
@@ -281,8 +319,12 @@ export default function AssistWrapperPage() {
 
               {lastUtterance ? (
                 <div className="rounded-xl bg-white/5 p-4">
-                  <div className="mb-1 text-sm text-white/70">Your recent utterance</div>
-                  <p className="text-xs opacity-80 whitespace-pre-wrap wrap-break-words">{lastUtterance}</p>
+                  <div className="mb-1 text-sm text-white/70">
+                    Your recent utterance
+                  </div>
+                  <p className="text-xs opacity-80 whitespace-pre-wrap break-words">
+                    {lastUtterance}
+                  </p>
                 </div>
               ) : null}
 
@@ -295,7 +337,6 @@ export default function AssistWrapperPage() {
           </div>
         </section>
 
-        {/* Right: History (scrollable) */}
         <aside className="md:col-span-2">
           <div className="rounded-2xl bg-black/25 p-5 ring-1 ring-white/10">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -323,11 +364,14 @@ export default function AssistWrapperPage() {
                           {h.use_case}
                         </span>
                       </div>
-                      {/* <div className="line-clamp-3 text-xs opacity-80">{h.text}</div> */}
                       {h.utterance ? (
                         <details className="mt-2 text-[11px] text-white/70">
-                          <summary className="cursor-pointer select-none opacity-90">Utterance</summary>
-                          <div className="mt-1 whitespace-pre-wrap wrap-break-words">{h.utterance}</div>
+                          <summary className="cursor-pointer select-none opacity-90">
+                            Utterance
+                          </summary>
+                          <div className="mt-1 whitespace-pre-wrap break-words">
+                            {h.utterance}
+                          </div>
                         </details>
                       ) : null}
                       <div className="mt-2 text-[10px] text-white/50">

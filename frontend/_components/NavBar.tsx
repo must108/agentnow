@@ -10,6 +10,7 @@ import { GoSearch } from "react-icons/go";
 import { HiOutlineMicrophone } from "react-icons/hi2";
 import { CiVideoOn } from "react-icons/ci";
 import { HiOutlineMenu, HiOutlineX } from "react-icons/hi";
+import { FaChartPie } from "react-icons/fa";
 
 export default function NavBar() {
   const [open, setOpen] = useState(false);
@@ -18,7 +19,6 @@ export default function NavBar() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
-    // lock scroll (mobile)
     const prev = document.body.style.overflow;
     if (open) document.body.style.overflow = "hidden";
     else document.body.style.overflow = prev || "";
@@ -68,6 +68,15 @@ export default function NavBar() {
               Meeting Assist
             </span>
           </div>
+
+          <div className="relative group">
+            <Link href="/data">
+              <Button><FaChartPie /></Button>
+            </Link>
+            <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max max-w-[160px] px-3 py-1 text-xs text-white bg-gray-700 rounded whitespace-nowrap opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition">
+              Accel. Data
+            </span>
+          </div>
         </div>
 
         {/* Mobile hamburger */}
@@ -87,7 +96,8 @@ export default function NavBar() {
         className={`md:hidden border-t border-white/60 bg-[#e8ecee] overflow-hidden ${open ? "max-h-96" : "max-h-0"} transition-[max-height] duration-200 ease-out`}
       >
         <div className="mx-auto max-w-7xl w-full px-4 py-3">
-          <div className="grid grid-cols-3 gap-3">
+          {/* ⬇️ Now 4 items, so use 4 columns; switch to 2 cols on very narrow screens if you want */}
+          <div className="grid grid-cols-4 gap-3 xs:grid-cols-2 sm:grid-cols-4">
             <Link
               href="/chat"
               onClick={close}
@@ -119,6 +129,18 @@ export default function NavBar() {
                 <CiVideoOn />
               </span>
               <span>Meeting Assist</span>
+            </Link>
+
+            {/* ✅ New: Accel. Data */}
+            <Link
+              href="/data"
+              onClick={close}
+              className="flex flex-col items-center gap-2 rounded-xl bg-white/80 hover:bg-white p-3 text-sm text-gray-900"
+            >
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+                <FaChartPie />
+              </span>
+              <span>Accel. Data</span>
             </Link>
           </div>
         </div>

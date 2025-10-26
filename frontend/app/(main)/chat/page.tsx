@@ -10,9 +10,13 @@ import { IoSparklesSharp } from "react-icons/io5";
 type ModelProps = {
   text: string;
   title: string;
-  use_case?: "existing_user_request" | "non_existing_user_request" | "not_relevant" | "unknown" | string;
-}
-
+  use_case?:
+    | "existing_user_request"
+    | "non_existing_user_request"
+    | "not_relevant"
+    | "unknown"
+    | string;
+};
 
 export default function Chatbot() {
   const [messages, setMessages] = useState<Msg[]>([
@@ -38,9 +42,9 @@ export default function Chatbot() {
     setInput("");
 
     try {
-      const url = `http://127.0.0.1:8000/query?payload=${encodeURIComponent(
-        trimmed
-      )}&mode=chat`;
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const url = `${baseUrl}/query?payload=${encodeURIComponent(trimmed)}&mode=chat`;
+
       const res = await fetch(url, { method: "GET" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -51,12 +55,8 @@ export default function Chatbot() {
         const data: Partial<ModelProps> = await res.json();
         const title = data?.title ?? "";
         const text = data?.text ?? "";
-        // const useCase = (data?.use_case ?? "unknown").replaceAll("_", " ");
 
-        replyMd =
-          (title ? `**${title}**\n\n` : "") +
-          (text || "")
-          // (useCase ? `\n\n*Use case:* ${useCase}` : "");
+        replyMd = (title ? `**${title}**\n\n` : "") + (text || "");
       } else {
         const raw = await res.text();
         replyMd = raw || "No response.";

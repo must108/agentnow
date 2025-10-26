@@ -50,7 +50,8 @@ export default function AcceleratorDashboard() {
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch("http://127.0.0.1:8000/report", {
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+        const res = await fetch(`${baseUrl}/report`, {
           cache: "no-store",
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

@@ -101,7 +101,8 @@ export default function AssistWrapperPage() {
 
       try {
         setError(null);
-        const url = `http://127.0.0.1:8000/query?payload=${encodeURIComponent(
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+        const url = `${baseUrl}/query?payload=${encodeURIComponent(
           finalText
         )}&mode=voice`;
         const res = await fetch(url, { method: "GET" });

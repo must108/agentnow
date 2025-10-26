@@ -99,7 +99,8 @@ export default function Voice() {
         setApiError(null);
         setApiData(null);
         try {
-          const url = `http://127.0.0.1:8000/query?payload=${encodeURIComponent(finalText)}&mode=voice`;
+          const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+          const url = `${baseUrl}/query?payload=${encodeURIComponent(finalText)}&mode=voice`;
           const res = await fetch(url, { method: "GET" });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
 

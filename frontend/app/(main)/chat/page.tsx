@@ -6,6 +6,13 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 type Msg = { role: "user" | "assistant" | "system"; text: string };
 
+type ModelProps = {
+  text: string;
+  title: string;
+  use_case?: "existing_user_request" | "non_existing_user_request" | "not_relevant" | "unknown" | string;
+}
+
+
 export default function Chatbot() {
   const [messages, setMessages] = useState<Msg[]>([
     { role: "system", text: "Hi! Ask me about Technical Accelerators." },
@@ -34,26 +41,27 @@ export default function Chatbot() {
         trimmed
       )}&mode=chat`;
       const res = await fetch(url, { method: "GET" });
-
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      let reply: string;
+      let replyMd = "";
       const ctype = res.headers.get("content-type") || "";
+
       if (ctype.includes("application/json")) {
-        const data = await res.json();
-        reply =
-          typeof data === "string"
-            ? data
-            : data?.model?.json?.recommendation
-            ? `${data.model.json.recommendation}\n\n${
-                data.model.json.rationale ?? ""
-              }`
-            : data?.message || JSON.stringify(data, null, 2);
+        const data: Partial<ModelProps> = await res.json();
+        const title = data?.title ?? "";
+        const text = data?.text ?? "";
+        // const useCase = (data?.use_case ?? "unknown").replaceAll("_", " ");
+
+        replyMd =
+          (title ? `**${title}**\n\n` : "") +
+          (text || "")
+          // (useCase ? `\n\n*Use case:* ${useCase}` : "");
       } else {
-        reply = await res.text();
+        const raw = await res.text();
+        replyMd = raw || "No response.";
       }
 
-      setMessages((m) => [...m, { role: "assistant", text: reply }]);
+      setMessages((m) => [...m, { role: "assistant", text: replyMd }]);
     } catch (e: any) {
       const msg = e?.message || "Request failed";
       setApiError(msg);
@@ -83,7 +91,7 @@ export default function Chatbot() {
               }`}
             >
               <div
-                className={`inline-block max-w-[75%] whitespace-pre-wrap break-words rounded-2xl px-4 py-2 text-sm ${
+                className={`inline-block max-w-[75%] whitespace-pre-wrap wrap-break-word rounded-2xl px-4 py-2 text-sm ${
                   m.role === "user"
                     ? "bg-blue-600 text-white shadow"
                     : m.role === "assistant" || m.role === "system"

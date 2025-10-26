@@ -153,7 +153,7 @@ export default function Voice() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 p-6 select-none">
+    <div className="flex flex-col items-center justify-center gap-4 p-6 select-none min-h-screen">
     <button
       id="ptt"
       onPointerDown={(e) => {
@@ -165,16 +165,16 @@ export default function Voice() {
         stop();
       }}
       onContextMenu={(e) => e.preventDefault()}
-      className="flex items-center justify-center w-20 h-20 rounded-full bg-[#63df4e] text-white text-3xl shadow-md hover:bg-[#6df056] active:scale-95 transition"
+      className="flex items-center justify-center w-30 h-30 rounded-full bg-[#63df4e] text-white text-3xl shadow-md hover:bg-[#6df056] active:scale-95 transition"
     >
-      <HiOutlineMicrophone />
+      <HiOutlineMicrophone size={50}/>
     </button>
 
     <div className="mt-4 max-w-md text-center text-white">
       {displayText ? (
         <p className="whitespace-pre-wrap">{displayText}</p>
       ) : (
-        <p className="text-white italic">Press and hold to start speaking...</p>
+        <p className="text-white text-lg italic">Press and hold to start speaking...</p>
       )}
     </div>
 

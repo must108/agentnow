@@ -226,12 +226,12 @@ export default function AssistWrapperPage() {
     setTyping(true);
     let i = 0;
     const interval = setInterval(() => {
-      if (i < t.length - 1) {
-        setDisplayedText((prev) => prev + t[i]);
-        i++;
-      } else {
+      setDisplayedText((prev) => prev + t[i])
+      if (i === t.length - 1) {
         clearInterval(interval);
         setTyping(false);
+      } else {
+        i += 1;
       }
     }, 20);
 
